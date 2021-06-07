@@ -40,8 +40,10 @@ async function postToNotion(task) {
     try {
         const res = await axios( config )
         console.log( JSON.stringify( res.data ) );
+        return res.status;
     } catch ( err ) {
         console.log( err );
+        throw err;
     }
 }
 
@@ -58,6 +60,7 @@ async function getTasksFromTodoist() {
         const res = await axios( config );
         return res.data;
     } catch ( err ) {
+        console.log( err );
         throw err;
     }
     
@@ -67,7 +70,12 @@ async function getTasksFromTodoist() {
     try {
         const tasks = ( await getTasksFromTodoist() ).map( el => el.content );
 
-        tasks.forEach(el => postToNotion(el));
+        const successes = tasks.filter( async ( el ) => {
+            const status = await postToNotion( el );
+            return status === 200;
+        } );
+
+        console.log(successes);
     } catch ( err ) {
         console.log( err );
     }
