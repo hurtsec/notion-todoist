@@ -66,16 +66,40 @@ async function getTasksFromTodoist() {
     
 }
 
+async function removeTaskFromTodoist( task ) {
+    const config = {
+        method: 'post',
+        url: `https://api.todoist.com/rest/v1/tasks/${task.id}/close`,
+        headers: {
+            'Authorization': `Bearer ${ todoistApi }`
+        }
+    }
+
+    try {
+        const res = await axios( config );
+        if ( res.status !== 204) throw err; 
+        return res.status;
+    } catch ( err ) {
+        console.log( err );
+        throw err;
+    }
+}
+
 (async function() {
     try {
-        const tasks = ( await getTasksFromTodoist() ).map( el => el.content );
+        const tasks = ( await getTasksFromTodoist() ).map( el => { return { task: el.content, id: el.id } } );
 
-        const successes = tasks.filter( async ( el ) => {
-            const status = await postToNotion( el );
-            return status === 200;
-        } );
+        const notionResponses = await Promise.all( tasks.map( async ( el ) => {
+            try {
+                const status = await postToNotion( el.task );
+                return { status: status, ...el };
+            } catch ( err ) {
+                console.log( err );
+            }
+        } ) );
 
-        console.log(successes);
+        const todoistResponses = await Promise.all( notionResponses.filter( el => el.status === 200 ).map( el => removeTaskFromTodoist( el ) ) );
+        console.log( todoistResponses );
     } catch ( err ) {
         console.log( err );
     }
